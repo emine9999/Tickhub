@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { useMyContext } from '../Contexts/ContextProvider';
-import { LuBot } from 'react-icons/lu';
+import { LiaRobotSolid } from "react-icons/lia";
 import { FaRegUser } from 'react-icons/fa';
-import { IoHomeOutline, IoChatboxEllipsesOutline } from 'react-icons/io5';
+import { IoChatboxEllipsesOutline } from 'react-icons/io5';
+import { BsChatLeftDots } from "react-icons/bs";
+import { FaPlus } from "react-icons/fa6";
 
 interface ChatMessage {
   id: number;
@@ -14,85 +16,142 @@ interface ChatMessage {
 }
 
 interface Chat {
+  id: number;
   title: string;
   messages: ChatMessage[];
 }
+
 interface SideBarProps {
-  onSelectChat: (chat: Chat) => void; // Function to handle chat selection
+  onSelectChat: (chat: Chat) => void;
 }
 
 const SideBar: React.FC<SideBarProps> = ({ onSelectChat }) => {
   const { state } = useMyContext();
   const [chatList, setChatList] = useState<Chat[]>([]);
+  const [todayChats, setTodayChats] = useState<Chat[]>([]);
+  const [last7DaysChats, setLast7DaysChats] = useState<Chat[]>([]);
 
   useEffect(() => {
     fetch('/data/data.json')
       .then((response) => response.json())
-      .then((data: Chat[]) => setChatList(data));
+      .then((data: Chat[]) => {
+        setChatList(data);
+        filterChats(data);
+      })
+      .catch(error => {
+        console.error("Error loading chat data:", error);
+        // Fallback data for demo purposes
+        const fallbackData = [
+          { id: 1, title: "Problème de connexion ...", messages: [] },
+          { id: 2, title: "Problème d'accès utilisate..", messages: [] },
+          { id: 3, title: "Échec de sauvegarde des...", messages: [] },
+          { id: 4, title: "Problème de configuration", messages: [] }
+        ];
+        setChatList(fallbackData);
+        setTodayChats(fallbackData.slice(0, 2));
+        setLast7DaysChats(fallbackData.slice(2, 4));
+      });
   }, []);
 
-  // to filter using Date 
-  const now = new Date();
-  const last7Days = chatList.filter(message => {
-    const messageDate = new Date(message.timestamp);
-    return (now.getTime() - messageDate.getTime()) / (1000 * 3600 * 24) <= 7;
-  });
+  const filterChats = (chats: Chat[]) => {
+    const today = new Date();
+    const todayStart = new Date(today.setHours(0, 0, 0, 0)); // Start of today
+    const sevenDaysAgo = new Date(todayStart);
+    sevenDaysAgo.setDate(todayStart.getDate() - 7); // Start of 7 days ago
+
+    const todayFiltered = chats.filter((chat) =>
+      chat.messages.some((msg) => new Date(msg.timestamp) >= todayStart)
+    );
+
+    const last7DaysFiltered = chats.filter((chat) =>
+      chat.messages.some((msg) => {
+        const msgDate = new Date(msg.timestamp);
+        return msgDate >= sevenDaysAgo && msgDate < todayStart;
+      })
+    );
+
+    setTodayChats(todayFiltered);
+    setLast7DaysChats(last7DaysFiltered);
+  };
 
   return (
     <>
       {state && (
-        <div className="w-full border-r h-screen bg-white p-5 grid grid-row-16">
-          <div className="border-b row-span-1 ">
-            <span className="font-bold text-3xl">TICK</span>hub
+        <div className="w-full h-full bg-custom-g p-4 md:p-5 flex flex-col ">
+          <div className="border-b pb-3 ">
+            <span className="font-extrabold text-3xl md:text-4xl">TICK</span>
+            <span className="font-normal">hub</span>
           </div>
-          <div className="border-b row-span-2 flex justify-center items-center gap-4">
-            <LuBot className="text-5xl" />
-            <button className="px-3 bg-blue-500 rounded-lg hover:bg-blue-800 text-white">
-              New Chat
+          
+          <div className="border-b py-4 flex items-center justify-center gap-4">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center ">
+            <LiaRobotSolid 
+            size={45}/> 
+            </div>
+            <button className="justify-center py-2 px-6 bg-cust-blue text-white rounded-md hover:bg-blue-800 transition-colors text-sm  shadow-lg">
+              New Chat 
+
             </button>
           </div>
-          <div className="border-b row-span-2 flex justify-between items-center">
-            <span className="font-extra-light text-sm text-gray-300">
+          
+          <div className="border-b py-3 flex justify-between items-center">
+            <span className="text-sm text-gray-500">
               Your Conversations
             </span>
-            <p className="font-semi-bold text-violet-700 cursor-pointer">
-              Clear All
-            </p>
+            <button className="text-blue-600 text-sm">Clear All</button>
           </div>
 
-          <div className="border-b row-span-5 bg-blue-700 max-h-60 overflow-auto ">
-            <h1 className="font-semi-bold text-sm ">Today</h1>
-            
+          {/* Today Chats */}
+          <div className="overflow-y-auto flex-grow">
             <ul>
-              {chatList.map((chat) => (
+              {todayChats.map((chat) => (
                 <li
                   key={chat.id}
                   onClick={() => onSelectChat(chat)}
-                  className="mt-3 cursor-pointer flex justify-start gap-2 items-center"
+                  className="py-3 cursor-pointer flex items-center hover:bg-gray-100 px-2"
                 >
-                  <IoChatboxEllipsesOutline className="text-xl" />
-                  <strong>{chat.title}</strong>
+                  
+                  <span className="text-sm truncate">{chat.title}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="border-b row-span-5 bg-blue-300">
-          <h3>Last 7 Days</h3>
-        {last7Days.length > 0 ? (
-          last7Days.map((chat) => (
-            <div key={chat.id} style={{ marginBottom: '10px' }}>
-               {chat.title} 
-            </div>
-          ))
-        ) : (
-          <p>No messages in the last 7 days.</p>
-        )}
+          {/* Last 7 Days Chats */}
+          <div className="border-t py-2">
+            <h3 className="font-medium text-sm py-2">Last 7 Days</h3>
+            <ul className="overflow-y-auto max-h-40">
+              {last7DaysChats.map((chat) => (
+                <li
+                  key={chat.id}
+                  onClick={() => onSelectChat(chat)}
+                  className="py-3 cursor-pointer flex items-center hover:bg-gray-100 px-2"
+                >
+                  <div className="w-6 h-6 mr-2 flex justify-center items-center lg:text-xl">
+                  <BsChatLeftDots />
+
+                  </div>
+                  <span className="text-sm truncate text-gray-800 font-semibold lg:text-lg">{chat.title}</span>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <div className="border-b row-span-1  flex justify-center items-center">
-            <div className="bg-gray-200 rounded-full flex items-center w-1/2 justify-center gap-4">
-              <FaRegUser /> <p>admin</p>
+          <div className="mt-auto border-t pt-3">
+            <div className="p-3 flex items-center hover:bg-gray-100 cursor-pointer rounded">
+              <div className="w-6 h-6 mr-2">
+                <FaRegUser size={18} />
+              </div>
+              <span className="text-sm">Admin Panel</span>
+            </div>
+            <div className="p-3 flex items-center hover:bg-gray-100 cursor-pointer rounded">
+              <div className="w-6 h-6 mr-2">
+                <svg viewBox="0 0 24 24" className="w-6 h-6">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" fill="none" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M9 22V12h6v10" fill="none" stroke="currentColor" strokeWidth="2"/>
+                </svg>
+              </div>
+              <span className="text-sm">Home</span>
             </div>
           </div>
         </div>

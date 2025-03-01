@@ -4,3 +4,6 @@ export { default as SideBar } from './SideBar';
 export { default as Notifications } from './Notifications';
 export { default as User } from './User';
 export { default as Chat } from './Chat';
+export { default as NavBar } from './NavBar';
+export { default as UserInput } from './UserInput';
+export { default as ReqInput } from './ReqInput';
